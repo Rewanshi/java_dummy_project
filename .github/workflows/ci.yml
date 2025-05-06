@@ -22,10 +22,9 @@ jobs:
         java-version: '11'
 
 
-   - name: Build with Maven
-     run: |
-      cd java_dummy_project
-      mvn clean install
+    - name: Build with Maven
+      run: mvn clean install
+
 
 
     # JUnit Tests
