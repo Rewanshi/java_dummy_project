@@ -27,11 +27,11 @@ jobs:
       with:
         node-version: '18'
 
-    # Install Node.js dependencies and Jest type definitions
-    - name: Install Node.js dependencies
+    # Install Node.js dependencies, Jest type definitions, and ts-jest
+    - name: Install Node.js dependencies and Jest type definitions
       run: |
         npm install
-        npm install --save-dev @types/jest
+        npm install --save-dev @types/jest ts-jest jest
       working-directory: ${{ github.workspace }}
 
     # TypeScript compile check (no emit, just typecheck)
