@@ -55,10 +55,10 @@ jobs:
       run: mvn test
       working-directory: ${{ github.workspace }}
 
-    # Download sarif-formatter (Java JAR)
+   # Download sarif-formatter (Java JAR)
     - name: Download sarif-formatter
       run: |
-        curl -LO https://github.com/jeremylong/sarif-formatter/releases/download/v0.0.3/sarif-formatter-0.0.3.jar
+       curl -L -o sarif-formatter-0.0.3.jar https://github.com/jeremylong/sarif-formatter/releases/download/v0.0.3/sarif-formatter-0.0.3.jar
       working-directory: ${{ github.workspace }}
 
     # Convert JUnit XML to SARIF
