@@ -58,19 +58,19 @@ jobs:
     # Download sarif-formatter (Java JAR)
     - name: Download sarif-formatter
       run: |
-        wget https://github.com/jeremylong/sarif-formatter/releases/download/v0.0.3/sarif-formatter-0.0.3.jar -O sarif-formatter-0.0.3.jar
-        ls -l sarif-formatter-0.0.3.jar
+        wget https://github.com/jeremylong/sarif-formatter/releases/download/v2.1.0/sarif-formatter-2.1.0.jar -O sarif-formatter-2.1.0.jar
+        ls -l sarif-formatter-2.1.0.jar
       working-directory: ${{ github.workspace }}
 
     # Set executable permissions for the downloaded JAR file
     - name: Set executable permissions for sarif-formatter JAR
-      run: chmod +x sarif-formatter-0.0.3.jar
+      run: chmod +x sarif-formatter-2.1.0.jar
       working-directory: ${{ github.workspace }}
 
     # Convert JUnit XML to SARIF
     - name: Convert JUnit XML to SARIF
       run: |
-        java -jar sarif-formatter-0.0.3.jar \
+        java -jar sarif-formatter-2.1.0.jar \
           --input target/surefire-reports/ \
           --output junit-results.sarif \
           --type JUNIT
