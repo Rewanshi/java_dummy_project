@@ -25,6 +25,7 @@ jobs:
     - name: Build with Maven
       run: mvn clean install
 
+
     # JUnit Tests
     - name: Run JUnit tests
       run: mvn test
