@@ -1,0 +1,65 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, CE ]
+  pull_request:
+    branches: [ main, CE ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # Java: Build & Test
+    - name: Set up JDK
+      uses: actions/setup-java@v3
+      with:
+        java-version: '11'
+
+    - name: Build with Maven
+      run: mvn clean install
+
+    # JUnit Tests
+    - name: Run JUnit tests
+      run: mvn test
+
+    # TypeScript: Install & Test
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+
+    - name: Install Node.js dependencies
+      run: npm install
+
+    - name: Run TypeScript build
+      run: npm run build
+
+    - name: Run Jest tests
+      run: npm test
+
+    # ts-scan (dummy placeholder)
+    - name: Run ts-scan (placeholder)
+      run: echo "Running ts-scan..."
+
+    # PMD Scan
+    - name: Run PMD
+      run: |
+        wget https://github.com/pmd/pmd/releases/download/pmd_releases%2F6.55.0/pmd-bin-6.55.0.zip
+        unzip pmd-bin-6.55.0.zip
+        ./pmd-bin-6.55.0/bin/run.sh pmd -d src/ -R rulesets/java/quickstart.xml -f text
+
+    # Semgrep Scan
+    - name: Run Semgrep
+      run: |
+        pip install semgrep
+        semgrep scan --config auto .
+
+    # SpotBugs + FindBugs (optional)
+    - name: Run SpotBugs (optional)
+      run: |
+        echo "Skipping SpotBugs (setup needed)"
