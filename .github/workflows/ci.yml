@@ -27,9 +27,11 @@ jobs:
       with:
         node-version: '18'
 
-    # Install Node.js dependencies
+    # Install Node.js dependencies and Jest type definitions
     - name: Install Node.js dependencies
-      run: npm install
+      run: |
+        npm install
+        npm install --save-dev @types/jest
       working-directory: ${{ github.workspace }}
 
     # TypeScript compile check (no emit, just typecheck)
@@ -60,8 +62,6 @@ jobs:
     - name: Run Semgrep scan
       run: semgrep scan --config=auto .
       working-directory: ${{ github.workspace }}
-
-
 
 # name: CI Pipeline
 
