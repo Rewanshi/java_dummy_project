@@ -27,11 +27,11 @@ jobs:
       with:
         node-version: '18'
 
-    # Install Node.js dependencies, Jest type definitions, and ts-jest
-    - name: Install Node.js dependencies and Jest type definitions
+    # Install Node.js dependencies, Jest type definitions, ts-jest
+    - name: Install Node.js dependencies and tools
       run: |
         npm install
-        npm install --save-dev @types/jest ts-jest jest
+        npm install --save-dev @types/jest ts-jest jest @cyclonedx/cyclonedx-npm
       working-directory: ${{ github.workspace }}
 
     # TypeScript compile check (no emit, just typecheck)
@@ -44,6 +44,24 @@ jobs:
       run: npm test
       working-directory: ${{ github.workspace }}
 
+    # Run JUnit tests
+    - name: Run JUnit tests
+      run: mvn test
+      working-directory: ${{ github.workspace }}
+
+    # Convert JUnit XML results to SARIF
+    - name: Convert JUnit results to SARIF
+      run: |
+        npm install --global junit-sarif
+        junit-sarif-formatter target/surefire-reports/*.xml > junit-results.sarif
+      working-directory: ${{ github.workspace }}
+
+    # Upload JUnit SARIF report
+    - name: Upload JUnit SARIF report
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: junit-results.sarif
+
     # Build with Maven
     - name: Build with Maven
       run: mvn clean install
@@ -54,6 +72,18 @@ jobs:
       run: mvn pmd:pmd
       working-directory: ${{ github.workspace }}
 
+    # Generate SBOM for TypeScript project
+    - name: Generate TypeScript SBOM
+      run: npx @cyclonedx/cyclonedx-npm --output-file sbom.json
+      working-directory: ${{ github.workspace }}
+
+    # Upload SBOM artifact
+    - name: Upload SBOM artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ts-sbom
+        path: sbom.json
+
     # Install Semgrep for security/static analysis
     - name: Install Semgrep
       run: pip install semgrep
@@ -62,6 +92,73 @@ jobs:
     - name: Run Semgrep scan
       run: semgrep scan --config=auto .
       working-directory: ${{ github.workspace }}
+
+
+      
+# name: Java + Node CI
+
+# on:
+#   push:
+#     branches: [ main ]
+#   pull_request:
+#     branches: [ main ]
+
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#     - name: Checkout repository
+#       uses: actions/checkout@v3
+
+#     # Setup Java for Maven build
+#     - name: Set up Java
+#       uses: actions/setup-java@v3
+#       with:
+#         distribution: 'temurin'
+#         java-version: '11'
+
+#     # Setup Node.js for TypeScript + Jest
+#     - name: Set up Node.js
+#       uses: actions/setup-node@v3
+#       with:
+#         node-version: '18'
+
+#     # Install Node.js dependencies, Jest type definitions, and ts-jest
+#     - name: Install Node.js dependencies and Jest type definitions
+#       run: |
+#         npm install
+#         npm install --save-dev @types/jest ts-jest jest
+#       working-directory: ${{ github.workspace }}
+
+#     # TypeScript compile check (no emit, just typecheck)
+#     - name: Run TypeScript compile check
+#       run: npx tsc --noEmit
+#       working-directory: ${{ github.workspace }}
+
+#     # Run Jest tests
+#     - name: Run Jest tests
+#       run: npm test
+#       working-directory: ${{ github.workspace }}
+
+#     # Build with Maven
+#     - name: Build with Maven
+#       run: mvn clean install
+#       working-directory: ${{ github.workspace }}
+
+#     # Run PMD static analysis
+#     - name: Run PMD static analysis
+#       run: mvn pmd:pmd
+#       working-directory: ${{ github.workspace }}
+
+#     # Install Semgrep for security/static analysis
+#     - name: Install Semgrep
+#       run: pip install semgrep
+
+#     # Run Semgrep scan
+#     - name: Run Semgrep scan
+#       run: semgrep scan --config=auto .
+#       working-directory: ${{ github.workspace }}
 
 # name: CI Pipeline
 
