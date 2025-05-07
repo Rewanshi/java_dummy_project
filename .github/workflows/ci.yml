@@ -98,10 +98,11 @@ jobs:
 
       # Upload SARIF as artifact
       - name: Upload SARIF report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: junit-sarif-report
           path: junit.sarif
+
 
       # Optional: Upload SARIF to GitHub Code Scanning Alerts
       - name: Upload SARIF to GitHub code scanning
