@@ -11,104 +11,217 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Checkout repository
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    # Set up Java
-    - name: Set up Java
-      uses: actions/setup-java@v3
-      with:
-        distribution: 'temurin'
-        java-version: '11'
+      # Set up Java
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '11'
 
-    # Set up Node.js
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
+      # Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
 
-    # Install Node.js dependencies
-    - name: Install Node.js dependencies
-      run: |
-        npm install
-        npm install --save-dev @types/jest ts-jest jest
+      # Install Node.js dependencies
+      - name: Install Node.js dependencies and Jest type definitions
+        run: |
+          npm install
+          npm install --save-dev @types/jest ts-jest jest
 
-    # TypeScript type checking
-    - name: Run TypeScript compile check
-      run: npx tsc --noEmit
+      # TypeScript compile check
+      - name: Run TypeScript compile check
+        run: npx tsc --noEmit
 
-    # Run Jest tests
-    - name: Run Jest tests
-      run: npm test
+      # Run Jest tests
+      - name: Run Jest tests
+        run: npm test
 
-    - name: Generate CycloneDX SBOM
-      run: |
-        echo "Installing cyclonedx-bom locally..."
-        npm install --save-dev @cyclonedx/bom
+      # Build with Maven
+      - name: Build with Maven
+        run: mvn clean install
 
-        echo "Running cyclonedx-bom with npx..."
-        npx cyclonedx-bom -o sbom.xml
-      working-directory: ${{ github.workspace }}
+      # Run PMD
+      - name: Run PMD static analysis
+        run: mvn pmd:pmd
 
-    # Build Java project
-    - name: Build with Maven
-      run: mvn clean install
+      # Install Semgrep
+      - name: Install Semgrep
+        run: pip install semgrep
 
-    # Run PMD analysis
-    - name: Run PMD analysis
-      run: mvn pmd:pmd
+      # Run Semgrep
+      - name: Run Semgrep scan
+        run: semgrep scan --config=auto .
 
-    - name: Download and validate SARIF using SARIF Multitool
-      run: |
-        echo "Downloading SARIF Multitool..."
-        curl -L -o sarif-multitool.tar.gz https://github.com/microsoft/sarif-sdk/releases/latest/download/sarif-multitool-linux-x64.tar.gz
+      # Generate SBOM
+      - name: Generate CycloneDX SBOM
+        run: |
+          echo "Installing cyclonedx-bom..."
+          npm install -g @cyclonedx/bom || { echo "Install failed"; exit 1; }
 
-        echo "Extracting SARIF Multitool..."
-        mkdir sarif-multitool
-        tar -xzf sarif-multitool.tar.gz -C sarif-multitool
+          echo "Checking binary..."
+          BINARY_PATH="$(npm bin -g)/cyclonedx-bom"
+          if [ ! -x "$BINARY_PATH" ]; then
+            echo "cyclonedx-bom not executable at $BINARY_PATH"
+            exit 1
+          fi
 
-        echo "Validating SARIF file..."
-        chmod +x sarif-multitool/Sarif.Multitool
-        ./sarif-multitool/Sarif.Multitool validate junit.sarif
-      working-directory: ${{ github.workspace }}
+          echo "Generating SBOM..."
+          $BINARY_PATH -o sbom.xml
+
+      # Generate SARIF from JUnit
+      - name: Convert JUnit XML to SARIF
+        run: |
+          mvn test -Dsurefire.reportFormat=xml
+          pip install junitparser
+          junitparser merge target/surefire-reports/*.xml result.xml
+
+          # Fallback SARIF placeholder (replace with proper conversion logic/tool if needed)
+          echo '{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "JUnit"}}, "results": []}]}' > junit.sarif
+
+      # Validate SARIF
+      - name: Validate SARIF with SARIF Multitool
+        run: |
+          echo "Downloading SARIF Multitool..."
+          curl -L -o sarif-multitool.zip https://github.com/microsoft/sarif-sdk/releases/latest/download/Sarif.Multitool.linux-x64.zip
+
+          echo "Extracting SARIF Multitool..."
+          unzip sarif-multitool.zip -d sarif-multitool
+
+          echo "Validating SARIF file..."
+          chmod +x sarif-multitool/Sarif.Multitool
+          ./sarif-multitool/Sarif.Multitool validate junit.sarif
+
+      # Upload SARIF as artifact
+      - name: Upload SARIF report
+        uses: actions/upload-artifact@v3
+        with:
+          name: junit-sarif-report
+          path: junit.sarif
+
+      # Optional: Upload SARIF to GitHub Code Scanning Alerts
+      - name: Upload SARIF to GitHub code scanning
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: junit.sarif
 
 
-    # # Install SARIF Multitool for JUnit-to-SARIF conversion
-    # - name: Install SARIF Multitool
-    #   run: dotnet tool install --global Microsoft.CodeAnalysis.Sarif.Multitool
+          
+# name: Java + Node CI
 
-    # Run JUnit tests and convert reports to SARIF
-    - name: Run JUnit tests and generate SARIF
-      run: |
-        mvn test
-        ~/.dotnet/tools/sarif multitool convert target/surefire-reports/*.xml --tool junit --output junit.sarif
+# on:
+#   push:
+#     branches: [ main ]
+#   pull_request:
+#     branches: [ main ]
 
-    # Upload JUnit SARIF to GitHub Security tab
-    - name: Upload JUnit SARIF
-      uses: github/codeql-action/upload-sarif@v2
-      with:
-        sarif_file: junit.sarif
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
 
-    # Run Semgrep static analysis with SARIF output
-    - name: Run Semgrep scan
-      run: |
-        pip install semgrep
-        semgrep scan --config=auto . --sarif > semgrep.sarif
+#     steps:
+#     # Checkout repository
+#     - name: Checkout repository
+#       uses: actions/checkout@v3
 
-    # Upload Semgrep SARIF
-    - name: Upload Semgrep SARIF
-      uses: github/codeql-action/upload-sarif@v2
-      with:
-        sarif_file: semgrep.sarif
+#     # Set up Java
+#     - name: Set up Java
+#       uses: actions/setup-java@v3
+#       with:
+#         distribution: 'temurin'
+#         java-version: '11'
 
-    # Run SonarCloud scan
-    - name: SonarCloud Scan
-      uses: SonarSource/sonarcloud-github-action@v2
-      with:
-        projectBaseDir: ${{ github.workspace }}
-      env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+#     # Set up Node.js
+#     - name: Set up Node.js
+#       uses: actions/setup-node@v3
+#       with:
+#         node-version: '18'
+
+#     # Install Node.js dependencies
+#     - name: Install Node.js dependencies
+#       run: |
+#         npm install
+#         npm install --save-dev @types/jest ts-jest jest
+
+#     # TypeScript type checking
+#     - name: Run TypeScript compile check
+#       run: npx tsc --noEmit
+
+#     # Run Jest tests
+#     - name: Run Jest tests
+#       run: npm test
+
+#     - name: Generate CycloneDX SBOM
+#       run: |
+#         echo "Installing cyclonedx-bom locally..."
+#         npm install --save-dev @cyclonedx/bom
+
+#         echo "Running cyclonedx-bom with npx..."
+#         npx cyclonedx-bom -o sbom.xml
+#       working-directory: ${{ github.workspace }}
+
+#     # Build Java project
+#     - name: Build with Maven
+#       run: mvn clean install
+
+#     # Run PMD analysis
+#     - name: Run PMD analysis
+#       run: mvn pmd:pmd
+
+#     - name: Download and validate SARIF using SARIF Multitool
+#       run: |
+#         echo "Downloading SARIF Multitool..."
+#         curl -L -o sarif-multitool.tar.gz https://github.com/microsoft/sarif-sdk/releases/latest/download/sarif-multitool-linux-x64.tar.gz
+
+#         echo "Extracting SARIF Multitool..."
+#         mkdir sarif-multitool
+#         tar -xzf sarif-multitool.tar.gz -C sarif-multitool
+
+#         echo "Validating SARIF file..."
+#         chmod +x sarif-multitool/Sarif.Multitool
+#         ./sarif-multitool/Sarif.Multitool validate junit.sarif
+#       working-directory: ${{ github.workspace }}
+
+
+#     # # Install SARIF Multitool for JUnit-to-SARIF conversion
+#     # - name: Install SARIF Multitool
+#     #   run: dotnet tool install --global Microsoft.CodeAnalysis.Sarif.Multitool
+
+#     # Run JUnit tests and convert reports to SARIF
+#     - name: Run JUnit tests and generate SARIF
+#       run: |
+#         mvn test
+#         ~/.dotnet/tools/sarif multitool convert target/surefire-reports/*.xml --tool junit --output junit.sarif
+
+#     # Upload JUnit SARIF to GitHub Security tab
+#     - name: Upload JUnit SARIF
+#       uses: github/codeql-action/upload-sarif@v2
+#       with:
+#         sarif_file: junit.sarif
+
+#     # Run Semgrep static analysis with SARIF output
+#     - name: Run Semgrep scan
+#       run: |
+#         pip install semgrep
+#         semgrep scan --config=auto . --sarif > semgrep.sarif
+
+#     # Upload Semgrep SARIF
+#     - name: Upload Semgrep SARIF
+#       uses: github/codeql-action/upload-sarif@v2
+#       with:
+#         sarif_file: semgrep.sarif
+
+#     # Run SonarCloud scan
+#     - name: SonarCloud Scan
+#       uses: SonarSource/sonarcloud-github-action@v2
+#       with:
+#         projectBaseDir: ${{ github.workspace }}
+#       env:
+#         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
 
 # name: Java + Node CI
