@@ -59,12 +59,20 @@ jobs:
     - name: Run PMD analysis
       run: mvn pmd:pmd
 
-    - name: Download and run SARIF Multitool
+    - name: Download and validate SARIF using SARIF Multitool
       run: |
-        curl -L -o sarif-multitool.zip https://github.com/microsoft/sarif-sdk/releases/latest/download/Sarif.Multitool.zip
-        unzip sarif-multitool.zip -d sarif-multitool
+        echo "Downloading SARIF Multitool..."
+        curl -L -o sarif-multitool.tar.gz https://github.com/microsoft/sarif-sdk/releases/latest/download/sarif-multitool-linux-x64.tar.gz
+
+        echo "Extracting SARIF Multitool..."
+        mkdir sarif-multitool
+        tar -xzf sarif-multitool.tar.gz -C sarif-multitool
+
+        echo "Validating SARIF file..."
         chmod +x sarif-multitool/Sarif.Multitool
         ./sarif-multitool/Sarif.Multitool validate junit.sarif
+      working-directory: ${{ github.workspace }}
+
 
     # # Install SARIF Multitool for JUnit-to-SARIF conversion
     # - name: Install SARIF Multitool
