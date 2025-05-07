@@ -1,10 +1,10 @@
-name: Java + Node CI
+name: Java CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build:
@@ -14,75 +14,106 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    # Setup Java for Maven build
     - name: Set up Java
       uses: actions/setup-java@v3
       with:
         distribution: 'temurin'
         java-version: '11'
 
-    # Setup Node.js for TypeScript + Jest
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
+    - name: Run Maven build and tests
+      run: mvn clean test
 
-    # Install Node.js dependencies, Jest type definitions, and ts-jest
-    - name: Install Node.js dependencies and Jest type definitions
-      run: |
-        npm install
-        npm install --save-dev @types/jest ts-jest jest
-      working-directory: ${{ github.workspace }}
-
-    # TypeScript compile check
-    - name: Run TypeScript compile check
-      run: npx tsc --noEmit
-      working-directory: ${{ github.workspace }}
-
-    # Run Jest tests
-    - name: Run Jest tests
-      run: npm test
-      working-directory: ${{ github.workspace }}
-
-    # Generate TypeScript SBOM
-    - name: Generate TypeScript SBOM
-      run: npx cyclonedx-bom --output-file ts-sbom.json
-      working-directory: ${{ github.workspace }}
-
-    # Run Maven tests
-    - name: Run Maven tests
-      run: mvn test
-      working-directory: ${{ github.workspace }}
-
-    # Download junit-sarif converter
-    - name: Download junit-sarif converter
-      run: wget https://github.com/github/codeql-junit-sarif/releases/download/v0.0.35/junit-sarif.jar -O junit-sarif.jar
-      working-directory: ${{ github.workspace }}
-
-    # Convert JUnit XML to SARIF
-    - name: Convert JUnit XML to SARIF
-      run: java -jar junit-sarif.jar --input target/surefire-reports/ --output junit-results.sarif
-      working-directory: ${{ github.workspace }}
-
-    # Upload SARIF report
-    - name: Upload JUnit SARIF report
+    - name: Upload SARIF report
       uses: github/codeql-action/upload-sarif@v2
       with:
-        sarif_file: junit-results.sarif
+        sarif_file: target/sarif-reports/junit-results.sarif
 
-    # Run PMD static analysis
-    - name: Run PMD static analysis
-      run: mvn pmd:pmd
-      working-directory: ${{ github.workspace }}
+        
+# name: Java + Node CI
 
-    # Install Semgrep
-    - name: Install Semgrep
-      run: pip install semgrep
+# on:
+#   push:
+#     branches: [ main ]
+#   pull_request:
+#     branches: [ main ]
 
-    # Run Semgrep scan
-    - name: Run Semgrep scan
-      run: semgrep scan --config=auto .
-      working-directory: ${{ github.workspace }}
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#     - name: Checkout repository
+#       uses: actions/checkout@v3
+
+#     # Setup Java for Maven build
+#     - name: Set up Java
+#       uses: actions/setup-java@v3
+#       with:
+#         distribution: 'temurin'
+#         java-version: '11'
+
+#     # Setup Node.js for TypeScript + Jest
+#     - name: Set up Node.js
+#       uses: actions/setup-node@v3
+#       with:
+#         node-version: '18'
+
+#     # Install Node.js dependencies, Jest type definitions, and ts-jest
+#     - name: Install Node.js dependencies and Jest type definitions
+#       run: |
+#         npm install
+#         npm install --save-dev @types/jest ts-jest jest
+#       working-directory: ${{ github.workspace }}
+
+#     # TypeScript compile check
+#     - name: Run TypeScript compile check
+#       run: npx tsc --noEmit
+#       working-directory: ${{ github.workspace }}
+
+#     # Run Jest tests
+#     - name: Run Jest tests
+#       run: npm test
+#       working-directory: ${{ github.workspace }}
+
+#     # Generate TypeScript SBOM
+#     - name: Generate TypeScript SBOM
+#       run: npx cyclonedx-bom --output-file ts-sbom.json
+#       working-directory: ${{ github.workspace }}
+
+#     # Run Maven tests
+#     - name: Run Maven tests
+#       run: mvn test
+#       working-directory: ${{ github.workspace }}
+
+#     # Download junit-sarif converter
+#     - name: Download junit-sarif converter
+#       run: wget https://github.com/github/codeql-junit-sarif/releases/download/v0.0.35/junit-sarif.jar -O junit-sarif.jar
+#       working-directory: ${{ github.workspace }}
+
+#     # Convert JUnit XML to SARIF
+#     - name: Convert JUnit XML to SARIF
+#       run: java -jar junit-sarif.jar --input target/surefire-reports/ --output junit-results.sarif
+#       working-directory: ${{ github.workspace }}
+
+#     # Upload SARIF report
+#     - name: Upload JUnit SARIF report
+#       uses: github/codeql-action/upload-sarif@v2
+#       with:
+#         sarif_file: junit-results.sarif
+
+#     # Run PMD static analysis
+#     - name: Run PMD static analysis
+#       run: mvn pmd:pmd
+#       working-directory: ${{ github.workspace }}
+
+#     # Install Semgrep
+#     - name: Install Semgrep
+#       run: pip install semgrep
+
+#     # Run Semgrep scan
+#     - name: Run Semgrep scan
+#       run: semgrep scan --config=auto .
+#       working-directory: ${{ github.workspace }}
 
 
 

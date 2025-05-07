@@ -15,6 +15,7 @@
 
     <build>
         <plugins>
+            <!-- Surefire plugin for running tests and generating JUnit XML reports -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -23,14 +24,37 @@
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                 </configuration>
             </plugin>
+
+            <!-- PMD plugin for static analysis -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-pmd-plugin</artifactId>
                 <version>3.15.0</version>
             </plugin>
+
+            <!-- OWASP SARIF Formatter plugin for converting JUnit XML reports to SARIF format -->
+            <plugin>
+                <groupId>org.owasp</groupId>
+                <artifactId>sarif-formatter-maven-plugin</artifactId>
+                <version>1.1.0</version> <!-- Use the latest version -->
+                <executions>
+                    <execution>
+                        <phase>test</phase> <!-- or whichever phase you want to use for SARIF generation -->
+                        <goals>
+                            <goal>sarif</goal>
+                        </goals>
+                        <configuration>
+                            <inputFile>${project.build.directory}/surefire-reports/*.xml</inputFile>
+                            <outputFile>${project.build.directory}/sarif-reports/junit-results.sarif</outputFile>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
+
 </project>
+
 
 
 
