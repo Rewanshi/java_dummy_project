@@ -42,11 +42,12 @@ jobs:
     - name: Run Jest tests
       run: npm test
 
-    # Generate SBOM from Node.js dependencies
     - name: Generate CycloneDX SBOM
       run: |
         npm install -g @cyclonedx/bom
+        export PATH="$(npm bin -g):$PATH"
         cyclonedx-bom -o sbom.xml
+
 
     # Build Java project with Maven
     - name: Build with Maven
