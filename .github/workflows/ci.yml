@@ -21,37 +21,27 @@ jobs:
         distribution: 'temurin'
         java-version: '11'
 
-    # Setup Node.js
+    # Setup Node.js for TypeScript + Jest
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
         node-version: '18'
 
-    # Install Node.js dependencies
-    - name: Install Node.js dependencies
+    # Install Node.js dependencies, Jest type definitions, and ts-jest
+    - name: Install Node.js dependencies and Jest type definitions
       run: |
         npm install
-        npm install --save-dev @types/jest ts-jest jest jest-junit junit-to-sarif
+        npm install --save-dev @types/jest ts-jest jest
       working-directory: ${{ github.workspace }}
 
-    # TypeScript compile check
+    # TypeScript compile check (no emit, just typecheck)
     - name: Run TypeScript compile check
       run: npx tsc --noEmit
       working-directory: ${{ github.workspace }}
 
-    # Run Jest tests with JUnit reporter
-    - name: Run Jest tests with JUnit reporter
-      env:
-        JEST_JUNIT_OUTPUT_DIR: ./reports/jest
-        JEST_JUNIT_OUTPUT_NAME: junit.xml
-      run: |
-        npx jest --ci --reporters=default --reporters=jest-junit
-      working-directory: ${{ github.workspace }}
-
-    # Convert Jest JUnit XML to SARIF
-    - name: Convert Jest JUnit XML to SARIF
-      run: |
-        npx junit-to-sarif ./reports/jest/junit.xml > ./sarif-results/jest-results.sarif
+    # Run Jest tests
+    - name: Run Jest tests
+      run: npm test
       working-directory: ${{ github.workspace }}
 
     # Build with Maven
@@ -70,184 +60,105 @@ jobs:
 
     # Run Semgrep scan
     - name: Run Semgrep scan
-      run: semgrep scan --config=auto . 
-      working-directory: ${{ github.workspace }}
-
-    # Install CycloneDX Node module for SBOM
-    - name: Install CycloneDX SBOM generator
-      run: npm install -g @cyclonedx/bom
-
-    # Generate SBOM for Node.js (TypeScript) project
-    - name: Generate SBOM for Node.js
-      run: cyclonedx-bom -o sbom-node.xml
+      run: semgrep scan --config=auto .
       working-directory: ${{ github.workspace }}
 
 
 
+name: Java + Node CI
 
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-# name: Java + Node CI
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-# on:
-#   push:
-#     branches: [ main ]
-#   pull_request:
-#     branches: [ main ]
+    # Setup Java for Maven build
+    - name: Set up Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '11'
 
-# jobs:
-#   build:
-#     runs-on: ubuntu-latest
+    # Setup Node.js for TypeScript + Jest
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
 
-#     steps:
-#     - name: Checkout repository
-#       uses: actions/checkout@v3
+    # Install Node.js dependencies, Jest type definitions, and ts-jest
+    - name: Install Node.js dependencies and Jest type definitions
+      run: |
+        npm install
+        npm install --save-dev @types/jest ts-jest jest
+      working-directory: ${{ github.workspace }}
 
-#     # Setup Java for Maven build
-#     - name: Set up Java
-#       uses: actions/setup-java@v3
-#       with:
-#         distribution: 'temurin'
-#         java-version: '11'
+    # TypeScript compile check (no emit, just typecheck)
+    - name: Run TypeScript compile check
+      run: npx tsc --noEmit
+      working-directory: ${{ github.workspace }}
 
-#     # Setup Node.js for TypeScript + Jest
-#     - name: Set up Node.js
-#       uses: actions/setup-node@v3
-#       with:
-#         node-version: '18'
+    # Run Jest tests
+    - name: Run Jest tests
+      run: npm test
+      working-directory: ${{ github.workspace }}
 
-#     # Install Node.js dependencies, Jest type definitions, and ts-jest
-#     - name: Install Node.js dependencies and Jest type definitions
-#       run: |
-#         npm install
-#         npm install --save-dev @types/jest ts-jest jest
-#       working-directory: ${{ github.workspace }}
+    # Run TypeScript SBOM scan (using typescript-sbom or cyclonedx)
+    - name: Generate TypeScript SBOM
+      run: |
+        npx cyclonedx-bom --output-file ts-sbom.json
+      working-directory: ${{ github.workspace }}
 
-#     # TypeScript compile check (no emit, just typecheck)
-#     - name: Run TypeScript compile check
-#       run: npx tsc --noEmit
-#       working-directory: ${{ github.workspace }}
+    # Build with Maven (explicit JUnit test run)
+    - name: Run Maven tests (JUnit)
+      run: mvn test
+      working-directory: ${{ github.workspace }}
 
-#     # Run Jest tests
-#     - name: Run Jest tests
-#       run: npm test
-#       working-directory: ${{ github.workspace }}
+    # Download sarif-formatter (Java JAR)
+    - name: Download sarif-formatter
+      run: |
+        wget https://github.com/jeremylong/sarif-formatter/releases/download/v2.1.0/sarif-formatter-2.1.0.jar -O sarif-formatter-2.1.0.jar
+        ls -l sarif-formatter-2.1.0.jar
+      working-directory: ${{ github.workspace }}
 
-#     # Build with Maven
-#     - name: Build with Maven
-#       run: mvn clean install
-#       working-directory: ${{ github.workspace }}
+    # Set executable permissions for the downloaded JAR file
+    - name: Set executable permissions for sarif-formatter JAR
+      run: chmod +x sarif-formatter-2.1.0.jar
+      working-directory: ${{ github.workspace }}
 
-#     # Run PMD static analysis
-#     - name: Run PMD static analysis
-#       run: mvn pmd:pmd
-#       working-directory: ${{ github.workspace }}
+    # Convert JUnit XML to SARIF
+    - name: Convert JUnit XML to SARIF
+      run: |
+        java -jar sarif-formatter-2.1.0.jar \
+          --input target/surefire-reports/ \
+          --output junit-results.sarif \
+          --type JUNIT
+      working-directory: ${{ github.workspace }}
 
-#     # Install Semgrep for security/static analysis
-#     - name: Install Semgrep
-#       run: pip install semgrep
+    # Upload JUnit SARIF report
+    - name: Upload JUnit SARIF report
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: junit-results.sarif
 
-#     # Run Semgrep scan
-#     - name: Run Semgrep scan
-#       run: semgrep scan --config=auto .
-#       working-directory: ${{ github.workspace }}
+    # Run PMD static analysis
+    - name: Run PMD static analysis
+      run: mvn pmd:pmd
+      working-directory: ${{ github.workspace }}
 
+    # Install Semgrep for security/static analysis
+    - name: Install Semgrep
+      run: pip install semgrep
 
-
-# name: Java + Node CI
-
-# on:
-#   push:
-#     branches: [ main ]
-#   pull_request:
-#     branches: [ main ]
-
-# jobs:
-#   build:
-#     runs-on: ubuntu-latest
-
-#     steps:
-#     - name: Checkout repository
-#       uses: actions/checkout@v3
-
-#     # Setup Java for Maven build
-#     - name: Set up Java
-#       uses: actions/setup-java@v3
-#       with:
-#         distribution: 'temurin'
-#         java-version: '11'
-
-#     # Setup Node.js for TypeScript + Jest
-#     - name: Set up Node.js
-#       uses: actions/setup-node@v3
-#       with:
-#         node-version: '18'
-
-#     # Install Node.js dependencies, Jest type definitions, and ts-jest
-#     - name: Install Node.js dependencies and Jest type definitions
-#       run: |
-#         npm install
-#         npm install --save-dev @types/jest ts-jest jest
-#       working-directory: ${{ github.workspace }}
-
-#     # TypeScript compile check (no emit, just typecheck)
-#     - name: Run TypeScript compile check
-#       run: npx tsc --noEmit
-#       working-directory: ${{ github.workspace }}
-
-#     # Run Jest tests
-#     - name: Run Jest tests
-#       run: npm test
-#       working-directory: ${{ github.workspace }}
-
-#     # Run TypeScript SBOM scan (using typescript-sbom or cyclonedx)
-#     - name: Generate TypeScript SBOM
-#       run: |
-#         npx cyclonedx-bom --output-file ts-sbom.json
-#       working-directory: ${{ github.workspace }}
-
-#     # Build with Maven (explicit JUnit test run)
-#     - name: Run Maven tests (JUnit)
-#       run: mvn test
-#       working-directory: ${{ github.workspace }}
-
-#     # Download sarif-formatter (Java JAR)
-#     - name: Download sarif-formatter
-#       run: |
-#         wget https://github.com/jeremylong/sarif-formatter/releases/download/v2.1.0/sarif-formatter-2.1.0.jar -O sarif-formatter-2.1.0.jar
-#         ls -l sarif-formatter-2.1.0.jar
-#       working-directory: ${{ github.workspace }}
-
-#     # Set executable permissions for the downloaded JAR file
-#     - name: Set executable permissions for sarif-formatter JAR
-#       run: chmod +x sarif-formatter-2.1.0.jar
-#       working-directory: ${{ github.workspace }}
-
-#     # Convert JUnit XML to SARIF
-#     - name: Convert JUnit XML to SARIF
-#       run: |
-#         java -jar sarif-formatter-2.1.0.jar \
-#           --input target/surefire-reports/ \
-#           --output junit-results.sarif \
-#           --type JUNIT
-#       working-directory: ${{ github.workspace }}
-
-#     # Upload JUnit SARIF report
-#     - name: Upload JUnit SARIF report
-#       uses: github/codeql-action/upload-sarif@v2
-#       with:
-#         sarif_file: junit-results.sarif
-
-#     # Run PMD static analysis
-#     - name: Run PMD static analysis
-#       run: mvn pmd:pmd
-#       working-directory: ${{ github.workspace }}
-
-#     # Install Semgrep for security/static analysis
-#     - name: Install Semgrep
-#       run: pip install semgrep
-
-#     # Run Semgrep scan
-#     - name: Run Semgrep scan
-#       run: semgrep scan --config=auto .
-#       working-directory: ${{ github.workspace }}
+    # Run Semgrep scan
+    - name: Run Semgrep scan
+      run: semgrep scan --config=auto .
+      working-directory: ${{ github.workspace }}
