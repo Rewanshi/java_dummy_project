@@ -2,17 +2,20 @@
   "name": "dummy-ts",
   "version": "1.0.0",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "test:ci": "npx jest --ci --reporters=default --reporters=jest-junit",
+    "convert:sarif": "npx --yes github:github/codeql-junit-to-sarif ./reports/jest/junit.xml > ./sarif-results/jest-results.sarif",
+    "test:ci:sarif": "npm run test:ci && mkdir -p ./sarif-results && npm run convert:sarif"
   },
   "devDependencies": {
     "typescript": "^5.0.0",
     "jest": "^29.0.0",
     "@types/jest": "^29.0.0",
     "ts-jest": "^29.0.0",
-    "jest-junit": "^15.0.0",
-    "junit-to-sarif": "^0.3.0"
+    "jest-junit": "^15.0.0"
   }
 }
+
 
 
 

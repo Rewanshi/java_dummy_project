@@ -31,7 +31,7 @@ jobs:
     - name: Install Node.js dependencies
       run: |
         npm install
-        npm install --save-dev @types/jest ts-jest jest jest-junit junit-to-sarif
+        npm install --save-dev @types/jest ts-jest jest jest-junit
       working-directory: ${{ github.workspace }}
 
     # TypeScript compile check
@@ -48,11 +48,15 @@ jobs:
         npx jest --ci --reporters=default --reporters=jest-junit
       working-directory: ${{ github.workspace }}
 
-    # Convert Jest JUnit XML to SARIF
+    # Create sarif-results directory
+    - name: Create sarif-results directory
+      run: mkdir -p ./sarif-results
+      working-directory: ${{ github.workspace }}
+
+    # Convert Jest JUnit XML to SARIF using npx + GitHub repo
     - name: Convert Jest JUnit XML to SARIF
       run: |
-        mkdir -p ./sarif-results
-        npx junit-to-sarif ./reports/jest/junit.xml > ./sarif-results/jest-results.sarif
+        npx --yes github:github/codeql-junit-to-sarif ./reports/jest/junit.xml > ./sarif-results/jest-results.sarif
       working-directory: ${{ github.workspace }}
 
     # Build with Maven
@@ -74,7 +78,7 @@ jobs:
       run: semgrep scan --config=auto .
       working-directory: ${{ github.workspace }}
 
-    # Install CycloneDX Node module for SBOM
+    # Install CycloneDX SBOM generator
     - name: Install CycloneDX SBOM generator
       run: npm install -g @cyclonedx/bom
 
@@ -82,7 +86,6 @@ jobs:
     - name: Generate SBOM for Node.js
       run: cyclonedx-bom -o sbom-node.xml
       working-directory: ${{ github.workspace }}
-
 
 
 
