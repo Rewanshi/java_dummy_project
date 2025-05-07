@@ -31,7 +31,7 @@ jobs:
     - name: Install Node.js dependencies
       run: |
         npm install
-        npm install --save-dev @types/jest ts-jest jest
+        npm install --save-dev @types/jest ts-jest jest jest-junit junit-to-sarif
       working-directory: ${{ github.workspace }}
 
     # TypeScript compile check
@@ -39,9 +39,16 @@ jobs:
       run: npx tsc --noEmit
       working-directory: ${{ github.workspace }}
 
-    # Run Jest tests
-    - name: Run Jest tests
-      run: npm test
+    # Run Jest tests and generate JUnit XML
+    - name: Run Jest tests with JUnit reporter
+      env:
+        JEST_JUNIT_OUTPUT: junit.xml
+      run: npx jest --ci --reporters=default --reporters=jest-junit
+      working-directory: ${{ github.workspace }}
+
+    # Convert Jest JUnit XML to SARIF
+    - name: Convert Jest JUnit XML to SARIF
+      run: npx junit-to-sarif junit.xml > sarif-results/junit-results.sarif
       working-directory: ${{ github.workspace }}
 
     # Build with Maven
@@ -54,15 +61,14 @@ jobs:
       run: mvn pmd:pmd
       working-directory: ${{ github.workspace }}
 
-    # Run JUnit tests and export SARIF
-    - name: Run Maven Surefire for JUnit SARIF report
-      run: |
-        mvn surefire-report:report-only
-        # Convert Surefire XML to SARIF using converter tool
-        npx @microsoft/sarif-multitool transform \
-          target/site/surefire-report.xml \
-          --tool-format jUnit \
-          --output sarif-results/junit-results.sarif
+    # Run JUnit tests with Surefire (Maven)
+    - name: Run Maven Surefire tests
+      run: mvn surefire-report:report-only
+      working-directory: ${{ github.workspace }}
+
+    # Convert Surefire JUnit XML to SARIF
+    - name: Convert Surefire XML to SARIF
+      run: npx junit-to-sarif target/surefire-reports/*.xml > sarif-results/surefire-results.sarif
       working-directory: ${{ github.workspace }}
 
     # Install Semgrep for security/static analysis
@@ -82,6 +88,7 @@ jobs:
     - name: Generate SBOM for Node.js
       run: cyclonedx-bom -o sbom-node.xml
       working-directory: ${{ github.workspace }}
+
 
 
 
