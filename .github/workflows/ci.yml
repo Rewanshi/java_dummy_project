@@ -48,12 +48,10 @@ jobs:
         npx jest --ci --reporters=default --reporters=jest-junit
       working-directory: ${{ github.workspace }}
 
-    # Convert Jest JUnit XML to SARIF
+   # Convert Jest JUnit XML to SARIF
     - name: Convert Jest JUnit XML to SARIF
       run: |
-        npx @microsoft/sarif-multitool transform ./reports/jest/junit.xml \
-          --tool-format junit \
-          --output ./sarif-results/jest-results.sarif
+       npx @microsoft/sarif-multitool convert --tool junit --output ./sarif-results/jest-results.sarif ./reports/jest/junit.xml
       working-directory: ${{ github.workspace }}
 
     # Build with Maven
