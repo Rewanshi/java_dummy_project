@@ -14,15 +14,15 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    # Setup Java for Maven build
-    - name: Set up Java
+    # Set up Java
+    - name: Set up Java 11
       uses: actions/setup-java@v3
       with:
         distribution: 'temurin'
         java-version: '11'
 
-    # Setup Node.js
-    - name: Set up Node.js
+    # Set up Node.js
+    - name: Set up Node.js 18
       uses: actions/setup-node@v3
       with:
         node-version: '18'
@@ -32,12 +32,10 @@ jobs:
       run: |
         npm install
         npm install --save-dev @types/jest ts-jest jest jest-junit @microsoft/sarif-multitool
-      working-directory: ${{ github.workspace }}
 
     # TypeScript compile check
-    - name: Run TypeScript compile check
+    - name: TypeScript compile check
       run: npx tsc --noEmit
-      working-directory: ${{ github.workspace }}
 
     # Run Jest tests with JUnit reporter
     - name: Run Jest tests with JUnit reporter
@@ -45,42 +43,51 @@ jobs:
         JEST_JUNIT_OUTPUT_DIR: ./reports/jest
         JEST_JUNIT_OUTPUT_NAME: junit.xml
       run: |
+        mkdir -p ./reports/jest
         npx jest --ci --reporters=default --reporters=jest-junit
-      working-directory: ${{ github.workspace }}
 
-   # Convert Jest JUnit XML to SARIF
+    # Convert Jest JUnit XML to SARIF
     - name: Convert Jest JUnit XML to SARIF
       run: |
-       npx @microsoft/sarif-multitool convert --tool junit --output ./sarif-results/jest-results.sarif ./reports/jest/junit.xml
-      working-directory: ${{ github.workspace }}
+        mkdir -p ./sarif-results
+        npx @microsoft/sarif-multitool convert --tool junit --output ./sarif-results/jest-results.sarif ./reports/jest/junit.xml
 
-    # Build with Maven
+    # Maven build
     - name: Build with Maven
       run: mvn clean install
-      working-directory: ${{ github.workspace }}
 
     # Run PMD static analysis
     - name: Run PMD static analysis
       run: mvn pmd:pmd
-      working-directory: ${{ github.workspace }}
 
-    # Install Semgrep for security/static analysis
+    # Install Semgrep
     - name: Install Semgrep
       run: pip install semgrep
 
     # Run Semgrep scan
     - name: Run Semgrep scan
       run: semgrep scan --config=auto .
-      working-directory: ${{ github.workspace }}
 
-    # Install CycloneDX Node module for SBOM
+    # Install CycloneDX SBOM generator
     - name: Install CycloneDX SBOM generator
       run: npm install -g @cyclonedx/bom
 
-    # Generate SBOM for Node.js (TypeScript) project
+    # Generate SBOM for Node.js project
     - name: Generate SBOM for Node.js
-      run: cyclonedx-bom -o sbom-node.xml
-      working-directory: ${{ github.workspace }}
+      run: |
+        mkdir -p ./sbom
+        cyclonedx-bom -o ./sbom/sbom-node.xml
+
+    # OPTIONAL: Upload artifacts for later use (reports, SBOM, SARIF)
+    # - name: Upload SARIF and SBOM artifacts
+    #   uses: actions/upload-artifact@v3
+    #   with:
+    #     name: reports
+    #     path: |
+    #       ./sarif-results/
+    #       ./sbom/
+    #       ./reports/jest/
+
 
 
 
