@@ -44,43 +44,10 @@ jobs:
       run: npm test
       working-directory: ${{ github.workspace }}
 
-    # Run TypeScript SBOM scan (using typescript-sbom or cyclonedx)
-    - name: Generate TypeScript SBOM
-      run: |
-        npx cyclonedx-bom --output-file ts-sbom.json
+    # Build with Maven
+    - name: Build with Maven
+      run: mvn clean install
       working-directory: ${{ github.workspace }}
-
-    # Build with Maven (explicit JUnit test run)
-    - name: Run Maven tests (JUnit)
-      run: mvn test
-      working-directory: ${{ github.workspace }}
-
-    # Download sarif-formatter (Java JAR)
-    - name: Download sarif-formatter
-      run: |
-        wget https://github.com/jeremylong/sarif-formatter/releases/download/v2.1.0/sarif-formatter-2.1.0.jar -O sarif-formatter-2.1.0.jar
-        ls -l sarif-formatter-2.1.0.jar
-      working-directory: ${{ github.workspace }}
-
-    # Set executable permissions for the downloaded JAR file
-    - name: Set executable permissions for sarif-formatter JAR
-      run: chmod +x sarif-formatter-2.1.0.jar
-      working-directory: ${{ github.workspace }}
-
-    # Convert JUnit XML to SARIF
-    - name: Convert JUnit XML to SARIF
-      run: |
-        java -jar sarif-formatter-2.1.0.jar \
-          --input target/surefire-reports/ \
-          --output junit-results.sarif \
-          --type JUNIT
-      working-directory: ${{ github.workspace }}
-
-    # Upload JUnit SARIF report
-    - name: Upload JUnit SARIF report
-      uses: github/codeql-action/upload-sarif@v2
-      with:
-        sarif_file: junit-results.sarif
 
     # Run PMD static analysis
     - name: Run PMD static analysis
@@ -98,8 +65,6 @@ jobs:
 
 
 
-
-    
 # name: Java + Node CI
 
 # on:
@@ -146,10 +111,43 @@ jobs:
 #       run: npm test
 #       working-directory: ${{ github.workspace }}
 
-#     # Build with Maven
-#     - name: Build with Maven
-#       run: mvn clean install
+#     # Run TypeScript SBOM scan (using typescript-sbom or cyclonedx)
+#     - name: Generate TypeScript SBOM
+#       run: |
+#         npx cyclonedx-bom --output-file ts-sbom.json
 #       working-directory: ${{ github.workspace }}
+
+#     # Build with Maven (explicit JUnit test run)
+#     - name: Run Maven tests (JUnit)
+#       run: mvn test
+#       working-directory: ${{ github.workspace }}
+
+#     # Download sarif-formatter (Java JAR)
+#     - name: Download sarif-formatter
+#       run: |
+#         wget https://github.com/jeremylong/sarif-formatter/releases/download/v2.1.0/sarif-formatter-2.1.0.jar -O sarif-formatter-2.1.0.jar
+#         ls -l sarif-formatter-2.1.0.jar
+#       working-directory: ${{ github.workspace }}
+
+#     # Set executable permissions for the downloaded JAR file
+#     - name: Set executable permissions for sarif-formatter JAR
+#       run: chmod +x sarif-formatter-2.1.0.jar
+#       working-directory: ${{ github.workspace }}
+
+#     # Convert JUnit XML to SARIF
+#     - name: Convert JUnit XML to SARIF
+#       run: |
+#         java -jar sarif-formatter-2.1.0.jar \
+#           --input target/surefire-reports/ \
+#           --output junit-results.sarif \
+#           --type JUNIT
+#       working-directory: ${{ github.workspace }}
+
+#     # Upload JUnit SARIF report
+#     - name: Upload JUnit SARIF report
+#       uses: github/codeql-action/upload-sarif@v2
+#       with:
+#         sarif_file: junit-results.sarif
 
 #     # Run PMD static analysis
 #     - name: Run PMD static analysis
@@ -164,4 +162,3 @@ jobs:
 #     - name: Run Semgrep scan
 #       run: semgrep scan --config=auto .
 #       working-directory: ${{ github.workspace }}
-
