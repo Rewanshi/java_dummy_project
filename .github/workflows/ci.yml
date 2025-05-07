@@ -11,18 +11,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Checkout source code
+    # Checkout repository
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    # Java setup
+    # Set up Java
     - name: Set up Java
       uses: actions/setup-java@v3
       with:
         distribution: 'temurin'
         java-version: '11'
 
-    # Node.js setup
+    # Set up Node.js
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
@@ -34,7 +34,7 @@ jobs:
         npm install
         npm install --save-dev @types/jest ts-jest jest
 
-    # TypeScript compile check
+    # TypeScript type checking
     - name: Run TypeScript compile check
       run: npx tsc --noEmit
 
@@ -42,29 +42,43 @@ jobs:
     - name: Run Jest tests
       run: npm test
 
-    #  Run TypeScript SBOM scan (using typescript-sbom or cyclonedx)
-    - name: Generate TypeScript SBOM
+    # Generate CycloneDX SBOM
+    - name: Generate CycloneDX SBOM
       run: |
-        npx cyclonedx-bom --output-file ts-sbom.json
-      working-directory: ${{ github.workspace }}
+        echo "Installing cyclonedx-bom globally..."
+        npm install -g @cyclonedx/bom || { echo "Failed to install cyclonedx-bom"; exit 1; }
 
-    # Build Java project with Maven
+        echo "Verifying installation..."
+        BINARY_PATH="$(npm bin -g)/cyclonedx-bom"
+        if [ ! -x "$BINARY_PATH" ]; then
+          echo "cyclonedx-bom is not executable at $BINARY_PATH"
+          ls -la "$(npm bin -g)"
+          exit 1
+        fi
+
+        echo "Running cyclonedx-bom..."
+        $BINARY_PATH -o sbom.xml || { echo "Failed to generate SBOM"; exit 1; }
+
+    # Build Java project
     - name: Build with Maven
       run: mvn clean install
 
-    # Run PMD static analysis
+    # Run PMD analysis
     - name: Run PMD analysis
       run: mvn pmd:pmd
 
-    # Run JUnit tests and convert results to SARIF
-    - name: Run JUnit and convert to SARIF
-      run: |
-        mvn test -Dsurefire.reportFormat=xml
-        pip install junitparser junit-sarif
-        junitparser merge target/surefire-reports/*.xml result.xml
-        junit-sarif result.xml > junit.sarif
+    # Install SARIF Multitool for JUnit-to-SARIF conversion
+    - name: Install SARIF Multitool
+      run: dotnet tool install --global Microsoft.CodeAnalysis.Sarif.Multitool
 
-    - name: Upload JUnit SARIF to GitHub Security tab
+    # Run JUnit tests and convert reports to SARIF
+    - name: Run JUnit tests and generate SARIF
+      run: |
+        mvn test
+        ~/.dotnet/tools/sarif multitool convert target/surefire-reports/*.xml --tool junit --output junit.sarif
+
+    # Upload JUnit SARIF to GitHub Security tab
+    - name: Upload JUnit SARIF
       uses: github/codeql-action/upload-sarif@v2
       with:
         sarif_file: junit.sarif
@@ -75,19 +89,19 @@ jobs:
         pip install semgrep
         semgrep scan --config=auto . --sarif > semgrep.sarif
 
-    - name: Upload Semgrep SARIF to GitHub Security tab
+    # Upload Semgrep SARIF
+    - name: Upload Semgrep SARIF
       uses: github/codeql-action/upload-sarif@v2
       with:
         sarif_file: semgrep.sarif
 
-    # SonarCloud analysis
+    # Run SonarCloud scan
     - name: SonarCloud Scan
       uses: SonarSource/sonarcloud-github-action@v2
       with:
         projectBaseDir: ${{ github.workspace }}
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
 
 
 # name: Java + Node CI
