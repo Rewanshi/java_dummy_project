@@ -46,17 +46,18 @@ jobs:
     - name: Generate CycloneDX SBOM
       run: |
         echo "Installing cyclonedx-bom globally..."
-        npm install -g @cyclonedx/bom || { echo "Failed to install cyclonedx-bom"; exit 1; }
+        npm install -g @cyclonedx/bom || { echo "❌ Failed to install cyclonedx-bom"; exit 1; }
 
         echo "Verifying installation..."
         BINARY_PATH="$(npm bin -g)/cyclonedx-bom"
-        if [ ! -f "$BINARY_PATH" ]; then
-          echo "cyclonedx-bom not found at $BINARY_PATH"
+        if [ ! -x "$BINARY_PATH" ]; then
+          echo "❌ cyclonedx-bom is not executable at $BINARY_PATH"
+          ls -la "$(npm bin -g)"
           exit 1
         fi
 
         echo "Running cyclonedx-bom..."
-        $BINARY_PATH -o sbom.xml || { echo "Failed to generate SBOM"; exit 1; }
+        $BINARY_PATH -o sbom.xml || { echo "❌ Failed to generate SBOM"; exit 1; }
 
     # Build Java project with Maven
     - name: Build with Maven
@@ -97,8 +98,6 @@ jobs:
         projectBaseDir: ${{ github.workspace }}
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-
 
 
 
