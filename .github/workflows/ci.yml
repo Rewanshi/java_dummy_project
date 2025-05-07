@@ -45,9 +45,8 @@ jobs:
     - name: Generate CycloneDX SBOM
       run: |
         npm install -g @cyclonedx/bom
-        export PATH="$(npm bin -g):$PATH"
-        cyclonedx-bom -o sbom.xml
-
+        BINARY_PATH="$(npm bin -g)/cyclonedx-bom"
+        $BINARY_PATH -o sbom.xml
 
     # Build Java project with Maven
     - name: Build with Maven
