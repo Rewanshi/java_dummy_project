@@ -11,57 +11,83 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # Checkout code
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    # Setup Java for Maven build
+    # Java setup
     - name: Set up Java
       uses: actions/setup-java@v3
       with:
         distribution: 'temurin'
         java-version: '11'
 
-    # Setup Node.js for TypeScript + Jest
+    # Node.js setup
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
         node-version: '18'
 
-    # Install Node.js dependencies, Jest type definitions, and ts-jest
-    - name: Install Node.js dependencies and Jest type definitions
+    # Install Node.js dependencies
+    - name: Install Node.js dependencies
       run: |
         npm install
         npm install --save-dev @types/jest ts-jest jest
-      working-directory: ${{ github.workspace }}
 
-    # TypeScript compile check (no emit, just typecheck)
+    # TypeScript compile check
     - name: Run TypeScript compile check
       run: npx tsc --noEmit
-      working-directory: ${{ github.workspace }}
 
     # Run Jest tests
     - name: Run Jest tests
       run: npm test
-      working-directory: ${{ github.workspace }}
 
-    # Build with Maven
+    # Generate SBOM from Node.js dependencies
+    - name: Generate CycloneDX SBOM
+      run: |
+        npm install -g @cyclonedx/bom
+        cyclonedx-bom -o sbom.xml
+
+    # Build Java project with Maven
     - name: Build with Maven
       run: mvn clean install
-      working-directory: ${{ github.workspace }}
 
     # Run PMD static analysis
-    - name: Run PMD static analysis
+    - name: Run PMD analysis
       run: mvn pmd:pmd
-      working-directory: ${{ github.workspace }}
 
-    # Install Semgrep for security/static analysis
-    - name: Install Semgrep
-      run: pip install semgrep
+    # Run JUnit tests and generate SARIF
+    - name: Run JUnit and convert to SARIF
+      run: |
+        mvn test -Dsurefire.reportFormat=xml
+        pip install junitparser junit-sarif
+        junitparser merge target/surefire-reports/*.xml result.xml
+        junit-sarif result.xml > junit.sarif
 
-    # Run Semgrep scan
-    - name: Run Semgrep scan
-      run: semgrep scan --config=auto .
-      working-directory: ${{ github.workspace }}
+    - name: Upload JUnit SARIF to GitHub Security
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: junit.sarif
+
+    # Install and run Semgrep with SARIF output
+    - name: Run Semgrep
+      run: |
+        pip install semgrep
+        semgrep scan --config=auto . --sarif > semgrep.sarif
+
+    - name: Upload Semgrep SARIF to GitHub Security
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: semgrep.sarif
+
+    # Run SonarCloud scan
+    - name: SonarCloud Scan
+      uses: SonarSource/sonarcloud-github-action@v2
+      with:
+        projectBaseDir: ${{ github.workspace }}
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
 
 
 
