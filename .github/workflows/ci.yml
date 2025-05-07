@@ -31,7 +31,7 @@ jobs:
     - name: Install Node.js dependencies
       run: |
         npm install
-        npm install --save-dev @types/jest ts-jest jest jest-junit junit-to-sarif
+        npm install --save-dev @types/jest ts-jest jest jest-junit
       working-directory: ${{ github.workspace }}
 
     # TypeScript compile check
@@ -39,16 +39,27 @@ jobs:
       run: npx tsc --noEmit
       working-directory: ${{ github.workspace }}
 
-    # Run Jest tests and generate JUnit XML
+    # Run Jest tests with JUnit reporter
     - name: Run Jest tests with JUnit reporter
-      env:
-        JEST_JUNIT_OUTPUT: junit.xml
-      run: npx jest --ci --reporters=default --reporters=jest-junit
+      run: npm test
       working-directory: ${{ github.workspace }}
 
-    # Convert Jest JUnit XML to SARIF
+    # Setup .NET for SARIF Multitool
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '6.x'
+
+    # Install SARIF Multitool
+    - name: Install SARIF Multitool
+      run: dotnet tool install --global Microsoft.CodeAnalysis.Sarif.Sdk.Tool
+
+    # Convert JUnit XML to SARIF
     - name: Convert Jest JUnit XML to SARIF
-      run: npx junit-to-sarif junit.xml > sarif-results/junit-results.sarif
+      run: |
+        ~/.dotnet/tools/sarif multitool transform junit.xml \
+          --tool-format junit \
+          --output sarif-results/jest-results.sarif
       working-directory: ${{ github.workspace }}
 
     # Build with Maven
@@ -59,16 +70,6 @@ jobs:
     # Run PMD static analysis
     - name: Run PMD static analysis
       run: mvn pmd:pmd
-      working-directory: ${{ github.workspace }}
-
-    # Run JUnit tests with Surefire (Maven)
-    - name: Run Maven Surefire tests
-      run: mvn surefire-report:report-only
-      working-directory: ${{ github.workspace }}
-
-    # Convert Surefire JUnit XML to SARIF
-    - name: Convert Surefire XML to SARIF
-      run: npx junit-to-sarif target/surefire-reports/*.xml > sarif-results/surefire-results.sarif
       working-directory: ${{ github.workspace }}
 
     # Install Semgrep for security/static analysis
@@ -88,6 +89,7 @@ jobs:
     - name: Generate SBOM for Node.js
       run: cyclonedx-bom -o sbom-node.xml
       working-directory: ${{ github.workspace }}
+
 
 
 
