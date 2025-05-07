@@ -42,22 +42,14 @@ jobs:
     - name: Run Jest tests
       run: npm test
 
-    # Generate CycloneDX SBOM
     - name: Generate CycloneDX SBOM
       run: |
-        echo "Installing cyclonedx-bom globally..."
-        npm install -g @cyclonedx/bom || { echo "Failed to install cyclonedx-bom"; exit 1; }
+        echo "Installing cyclonedx-bom locally..."
+        npm install --save-dev @cyclonedx/bom
 
-        echo "Verifying installation..."
-        BINARY_PATH="$(npm bin -g)/cyclonedx-bom"
-        if [ ! -x "$BINARY_PATH" ]; then
-          echo "cyclonedx-bom is not executable at $BINARY_PATH"
-          ls -la "$(npm bin -g)"
-          exit 1
-        fi
-
-        echo "Running cyclonedx-bom..."
-        $BINARY_PATH -o sbom.xml || { echo "Failed to generate SBOM"; exit 1; }
+        echo "Running cyclonedx-bom with npx..."
+        npx cyclonedx-bom -o sbom.xml
+      working-directory: ${{ github.workspace }}
 
     # Build Java project
     - name: Build with Maven
