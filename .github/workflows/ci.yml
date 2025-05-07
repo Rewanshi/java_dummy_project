@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Checkout code
+    # Checkout source code
     - name: Checkout repository
       uses: actions/checkout@v3
 
@@ -42,11 +42,21 @@ jobs:
     - name: Run Jest tests
       run: npm test
 
+    # Generate CycloneDX SBOM
     - name: Generate CycloneDX SBOM
       run: |
-        npm install -g @cyclonedx/bom
+        echo "Installing cyclonedx-bom globally..."
+        npm install -g @cyclonedx/bom || { echo "Failed to install cyclonedx-bom"; exit 1; }
+
+        echo "Verifying installation..."
         BINARY_PATH="$(npm bin -g)/cyclonedx-bom"
-        $BINARY_PATH -o sbom.xml
+        if [ ! -f "$BINARY_PATH" ]; then
+          echo "cyclonedx-bom not found at $BINARY_PATH"
+          exit 1
+        fi
+
+        echo "Running cyclonedx-bom..."
+        $BINARY_PATH -o sbom.xml || { echo "Failed to generate SBOM"; exit 1; }
 
     # Build Java project with Maven
     - name: Build with Maven
@@ -56,7 +66,7 @@ jobs:
     - name: Run PMD analysis
       run: mvn pmd:pmd
 
-    # Run JUnit tests and generate SARIF
+    # Run JUnit tests and convert results to SARIF
     - name: Run JUnit and convert to SARIF
       run: |
         mvn test -Dsurefire.reportFormat=xml
@@ -64,29 +74,30 @@ jobs:
         junitparser merge target/surefire-reports/*.xml result.xml
         junit-sarif result.xml > junit.sarif
 
-    - name: Upload JUnit SARIF to GitHub Security
+    - name: Upload JUnit SARIF to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v2
       with:
         sarif_file: junit.sarif
 
-    # Install and run Semgrep with SARIF output
-    - name: Run Semgrep
+    # Run Semgrep static analysis with SARIF output
+    - name: Run Semgrep scan
       run: |
         pip install semgrep
         semgrep scan --config=auto . --sarif > semgrep.sarif
 
-    - name: Upload Semgrep SARIF to GitHub Security
+    - name: Upload Semgrep SARIF to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v2
       with:
         sarif_file: semgrep.sarif
 
-    # Run SonarCloud scan
+    # SonarCloud analysis
     - name: SonarCloud Scan
       uses: SonarSource/sonarcloud-github-action@v2
       with:
         projectBaseDir: ${{ github.workspace }}
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
 
 
 
