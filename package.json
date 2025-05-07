@@ -2,21 +2,18 @@
   "name": "dummy-ts",
   "version": "1.0.0",
   "scripts": {
-    "test": "jest --ci --reporters=default --reporters=jest-junit",
-    "build": "tsc"
+    "test": "jest"
   },
   "devDependencies": {
-    "@types/jest": "^29.0.0",
-    "jest": "^29.0.0",
-    "ts-jest": "^29.0.0",
     "typescript": "^5.0.0",
-    "jest-junit": "^15.0.0"
-  },
-  "jest-junit": {
-    "outputDirectory": ".",
-    "outputName": "junit.xml"
+    "jest": "^29.0.0",
+    "@types/jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "jest-junit": "^15.0.0",
+    "@microsoft/sarif-multitool": "^4.5.4"
   }
 }
+
 
 
   

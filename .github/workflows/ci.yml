@@ -31,7 +31,7 @@ jobs:
     - name: Install Node.js dependencies
       run: |
         npm install
-        npm install --save-dev @types/jest ts-jest jest jest-junit
+        npm install --save-dev @types/jest ts-jest jest jest-junit @microsoft/sarif-multitool
       working-directory: ${{ github.workspace }}
 
     # TypeScript compile check
@@ -41,25 +41,19 @@ jobs:
 
     # Run Jest tests with JUnit reporter
     - name: Run Jest tests with JUnit reporter
-      run: npm test
+      env:
+        JEST_JUNIT_OUTPUT_DIR: ./reports/jest
+        JEST_JUNIT_OUTPUT_NAME: junit.xml
+      run: |
+        npx jest --ci --reporters=default --reporters=jest-junit
       working-directory: ${{ github.workspace }}
 
-    # Setup .NET for SARIF Multitool
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: '6.x'
-
-    # Install SARIF Multitool
-    - name: Install SARIF Multitool
-      run: dotnet tool install --global Microsoft.CodeAnalysis.Sarif.Sdk.Tool
-
-    # Convert JUnit XML to SARIF
+    # Convert Jest JUnit XML to SARIF
     - name: Convert Jest JUnit XML to SARIF
       run: |
-        ~/.dotnet/tools/sarif multitool transform junit.xml \
+        npx @microsoft/sarif-multitool transform ./reports/jest/junit.xml \
           --tool-format junit \
-          --output sarif-results/jest-results.sarif
+          --output ./sarif-results/jest-results.sarif
       working-directory: ${{ github.workspace }}
 
     # Build with Maven
@@ -89,6 +83,7 @@ jobs:
     - name: Generate SBOM for Node.js
       run: cyclonedx-bom -o sbom-node.xml
       working-directory: ${{ github.workspace }}
+
 
 
 
