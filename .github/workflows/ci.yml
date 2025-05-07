@@ -44,31 +44,15 @@ jobs:
       run: npm test
       working-directory: ${{ github.workspace }}
 
-    # Run TypeScript SBOM scan (using typescript-sbom or cyclonedx)
+    # Generate TypeScript SBOM
     - name: Generate TypeScript SBOM
       run: |
         npx cyclonedx-bom --output-file ts-sbom.json
       working-directory: ${{ github.workspace }}
 
-    # Build with Maven (explicit JUnit test run)
-    - name: Run Maven tests (JUnit)
-      run: mvn test
-      working-directory: ${{ github.workspace }}
-
-    # Download sarif-formatter (Java JAR)
-    - name: Download sarif-formatter
-      run: |
-        wget https://github.com/jeremylong/sarif-formatter/releases/download/v1.1.0/sarif-formatter-cli-1.1.0.jar -O sarif-formatter-cli-1.1.0.jar
-        ls -l sarif-formatter-cli-1.1.0.jar
-      working-directory: ${{ github.workspace }}
-
-    # Convert JUnit XML to SARIF
-    - name: Convert JUnit XML to SARIF
-      run: |
-        java -jar sarif-formatter-cli-1.1.0.jar \
-          --input target/surefire-reports/ \
-          --output junit-results.sarif \
-          --type JUNIT
+    # Run Maven verify (runs tests and generates SARIF using the plugin)
+    - name: Run Maven verify (JUnit + SARIF conversion)
+      run: mvn verify
       working-directory: ${{ github.workspace }}
 
     # Upload JUnit SARIF report
@@ -90,6 +74,7 @@ jobs:
     - name: Run Semgrep scan
       run: semgrep scan --config=auto .
       working-directory: ${{ github.workspace }}
+
 
 
 
