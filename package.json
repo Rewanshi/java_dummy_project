@@ -1,13 +1,32 @@
 {
-    "name": "dummy-ts",
-    "version": "1.0.0",
-    "scripts": {
-      "test": "jest",
-      "build": "tsc"
-    },
-    "devDependencies": {
-      "jest": "^29.0.0",
-      "typescript": "^5.0.0"
-    }
+  "name": "dummy-ts",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "jest",
+    "build": "tsc",
+    "test:ci": "jest --ci --reporters=default --reporters=jest-junit",
+    "generate:sbom": "cyclonedx-bom -o sbom-node.xml",
+    "convert:sarif": "npx @microsoft/sarif-multitool transform junit.xml --tool-format jUnit --output sarif-results/junit-results.sarif"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0",
+    "typescript": "^5.0.0",
+    "jest-junit": "^15.0.0"
   }
+}
+
+
+
+// {
+//     "name": "dummy-ts",
+//     "version": "1.0.0",
+//     "scripts": {
+//       "test": "jest",
+//       "build": "tsc"
+//     },
+//     "devDependencies": {
+//       "jest": "^29.0.0",
+//       "typescript": "^5.0.0"
+//     }
+//   }
   
